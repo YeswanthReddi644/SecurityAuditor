@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.securityauditor.auth.exception.InvalidCredentialsException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -14,6 +15,14 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(exception.getMessage());
+    }
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<String> handleInvalidCredentials(
+            InvalidCredentialsException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
                 .body(exception.getMessage());
     }
 }

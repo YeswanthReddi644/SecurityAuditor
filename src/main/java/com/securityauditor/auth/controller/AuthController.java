@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.securityauditor.auth.dto.LoginRequest;
 import com.securityauditor.auth.service.AuthService;
-import com.securityauditor.user.entity.User;
 
 import jakarta.validation.Valid;
 
@@ -26,10 +25,8 @@ public class AuthController {
     public ResponseEntity<String> login(
             @Valid @RequestBody LoginRequest request) {
 
-        User user = authService.login(request);
+        String token = authService.login(request);
 
-        return ResponseEntity.ok(
-                "Login successful for " + user.getEmail()
-        );
+        return ResponseEntity.ok(token);
     }
 }
