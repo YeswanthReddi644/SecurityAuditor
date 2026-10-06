@@ -1,9 +1,11 @@
 package com.securityauditor.repository.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import com.securityauditor.repository.dto.GitHubRepositoryResponse;
+import com.securityauditor.repository.exception.RepositoryNotFoundException;
 
 @Service
 public class GitHubService {
@@ -22,16 +24,25 @@ public class GitHubService {
             String owner,
             String repo) {
 
-        GitHubApiResponse response = restClient
-                .get()
-                .uri("/repos/{owner}/{repo}", owner, repo)
-                .retrieve()
-                .body(GitHubApiResponse.class);
+        try {
 
-        return new GitHubRepositoryResponse(
-                response.getName(),
-                response.getOwner().getLogin()
-        );
+            GitHubApiResponse response = restClient
+                    .get()
+                    .uri("/repos/{owner}/{repo}", owner, repo)
+                    .retrieve()
+                    .body(GitHubApiResponse.class);
+
+            return new GitHubRepositoryResponse(
+                    response.getName(),
+                    response.getOwner().getLogin()
+            );
+
+        } catch (HttpClientErrorException.NotFound exception) {
+
+            throw new RepositoryNotFoundException(
+                    "GitHub repository not found"
+            );
+        }
     }
 
     private static class GitHubApiResponse {

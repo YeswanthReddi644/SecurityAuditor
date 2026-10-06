@@ -42,28 +42,33 @@ public class RepositoryService {
         // 2. Get repository URL from request
         String url = request.getUrl();
 
-        // 3. Remove trailing slash if present
+        // 3. Validate GitHub URL
+        if (!isValidGitHubUrl(url)) {
+            throw new IllegalArgumentException(
+                    "Invalid GitHub repository URL");
+        }
+
+        // 4. Remove trailing slash if present
         String cleanUrl = url.endsWith("/")
                 ? url.substring(0, url.length() - 1)
                 : url;
 
-        // 4. Split GitHub URL
+        // 5. Split GitHub URL
         String[] parts = cleanUrl.split("/");
-
-        // Example:
-        // https://github.com/spring-projects/spring-boot
-        //
-        // owner = spring-projects
-        // repo  = spring-boot
 
         String owner = parts[parts.length - 2];
         String repo = parts[parts.length - 1];
 
-        // 5. Call GitHub API
+        // 6. Remove .git from repository name if present
+        if (repo.endsWith(".git")) {
+            repo = repo.substring(0, repo.length() - 4);
+        }
+
+        // 7. Call GitHub API
         GitHubRepositoryResponse githubRepository =
                 gitHubService.getRepository(owner, repo);
 
-        // 6. Create our database entity
+        // 8. Create database entity
         GitRepository repository = new GitRepository(
                 githubRepository.getName(),
                 url,
@@ -72,11 +77,11 @@ public class RepositoryService {
                 user
         );
 
-        // 7. Save repository in PostgreSQL
+        // 9. Save repository in PostgreSQL
         GitRepository savedRepository =
                 gitRepositoryRepository.save(repository);
 
-        // 8. Convert entity to response DTO
+        // 10. Convert entity to response DTO
         return new GitRepositoryResponse(
                 savedRepository.getId(),
                 savedRepository.getName(),
@@ -84,5 +89,14 @@ public class RepositoryService {
                 savedRepository.getOwner(),
                 savedRepository.getCreatedAt()
         );
+    }
+
+    // Validates GitHub repository URL
+    private boolean isValidGitHubUrl(String url) {
+
+        return url != null
+                && url.matches(
+                    "^https://github\\.com/[^/]+/[^/]+(?:\\.git)?/?$"
+                );
     }
 }
