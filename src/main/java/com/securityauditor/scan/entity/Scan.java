@@ -1,3 +1,4 @@
+
 package com.securityauditor.scan.entity;
 
 import java.time.LocalDateTime;
@@ -46,7 +47,6 @@ public class Scan {
             ScanStatus status,
             LocalDateTime createdAt,
             GitRepository repository) {
-
         this.status = status;
         this.createdAt = createdAt;
         this.repository = repository;
@@ -62,6 +62,14 @@ public class Scan {
 
     public void setStatus(ScanStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public LocalDateTime getStartedAt() {

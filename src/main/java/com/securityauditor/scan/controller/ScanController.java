@@ -2,13 +2,14 @@ package com.securityauditor.scan.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.securityauditor.scan.dto.CreateScanRequest;
-import com.securityauditor.scan.entity.Scan;
+import com.securityauditor.scan.dto.ScanResponse;
 import com.securityauditor.scan.service.ScanService;
 
 import jakarta.validation.Valid;
@@ -24,13 +25,17 @@ public class ScanController {
     }
 
     @PostMapping
-    public ResponseEntity<Scan> createScan(
-            @Valid @RequestBody CreateScanRequest request) {
+    public ResponseEntity<ScanResponse> createScan(
+            @Valid @RequestBody CreateScanRequest request,
+            Authentication authentication) {
 
-        Scan scan = scanService.createScan(request);
+        String userEmail = authentication.getName();
+
+        ScanResponse response =
+                scanService.createScan(request, userEmail);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(scan);
+                .body(response);
     }
 }
