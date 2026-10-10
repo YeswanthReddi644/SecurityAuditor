@@ -1,3 +1,4 @@
+
 package com.securityauditor.config;
 
 import org.springframework.context.annotation.Bean;
@@ -36,7 +37,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/v1/users",
-                    "/api/v1/auth/login"
+                    "/api/v1/auth/login",
+                    "/api/v1/github/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
