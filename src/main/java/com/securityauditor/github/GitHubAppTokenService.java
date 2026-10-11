@@ -1,6 +1,7 @@
 
 package com.securityauditor.github;
 
+
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
@@ -110,4 +111,34 @@ public class GitHubAppTokenService {
 
         return token.asText();
     }
+    
+    
+    public JsonNode getInstallationTokenPermissions()
+            throws IOException, InterruptedException {
+
+        String token = createInstallationToken();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(
+                        "https://api.github.com/installation/repositories"))
+                .header("Accept", "application/vnd.github+json")
+                .header("Authorization", "Bearer " + token)
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .GET()
+                .build();
+
+        HttpResponse<String> response = client.send(
+                request,
+                HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException(
+                    "Installation token check failed with HTTP "
+                            + response.statusCode()
+                            + ": " + response.body());
+        }
+
+        return mapper.readTree(response.body());
+    }
+   
 }

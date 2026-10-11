@@ -1,5 +1,6 @@
 
 package com.securityauditor.github;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,25 +35,23 @@ public class GitHubTestController {
             throws IOException, InterruptedException {
 
         JsonNode repository = gitHubApiService.getRepository(
-            "YeswanthReddi644",
-            "DSA-PRACTICE");
+                "YeswanthReddi644",
+                "DSA-PRACTICE");
 
         return ResponseEntity.ok(repository);
     }
-  
+
     @GetMapping("/test-files")
     public ResponseEntity<JsonNode> testRepositoryFiles()
             throws IOException, InterruptedException {
 
         JsonNode files = gitHubApiService.getRepositoryFiles(
-            "YeswanthReddi644",
-            "DSA-PRACTICE"
-        );
+                "YeswanthReddi644",
+                "DSA-PRACTICE");
 
         return ResponseEntity.ok(files);
     }
-    
- 
+
     @GetMapping("/test-file")
     public ResponseEntity<String> testDownloadFile(
             @RequestParam String blobSha,
@@ -61,45 +60,50 @@ public class GitHubTestController {
 
         try {
             String content = gitHubApiService.downloadTextFile(
-                "YeswanthReddi644",
-                "DSA-PRACTICE",
-                blobSha,
-                size
-            );
+                    "YeswanthReddi644",
+                    "DSA-PRACTICE",
+                    blobSha,
+                    size);
 
             return ResponseEntity.ok(content);
 
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                e.getMessage()
-            );
+                    HttpStatus.BAD_REQUEST,
+                    e.getMessage());
         }
     }
-    
+
     @GetMapping("/test-download")
     public ResponseEntity<String> testDownload()
             throws IOException, InterruptedException {
 
         Path destination = Paths.get(
-            System.getProperty("java.io.tmpdir"),
-            "security-auditor-test",
-            "DSA-PRACTICE"
-        );
+                System.getProperty("java.io.tmpdir"),
+                "security-auditor-test",
+                "DSA-PRACTICE");
 
         int count = sourceDownloadService.downloadSourceFiles(
-            "YeswanthReddi644",
-            "DSA-PRACTICE",
-            destination
-        );
+                "YeswanthReddi644",
+                "DSA-PRACTICE",
+                destination);
 
         return ResponseEntity.ok(
-            "Download completed successfully.\n"
-            + "Files downloaded: " + count + "\n"
-            + "Directory: " + destination.toAbsolutePath()
-        );
+                "Download completed successfully.\n"
+                        + "Files downloaded: " + count + "\n"
+                        + "Directory: " + destination.toAbsolutePath());
     }
 
-    
-  
+    // Diagnostic endpoint: does not trigger a workflow.
+    @GetMapping("/test-actions-permission")
+    public ResponseEntity<JsonNode> testActionsPermission()
+            throws IOException, InterruptedException {
+
+        JsonNode permissions =
+                gitHubApiService.testActionsPermission(
+                        "YeswanthReddi644",
+                        "DSA-PRACTICE");
+
+        return ResponseEntity.ok(permissions);
+    }
 }

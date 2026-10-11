@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 
+import com.securityauditor.github.GitHubApiService;
 import com.securityauditor.repository.entity.GitRepository;
 import com.securityauditor.repository.repository.GitRepositoryRepository;
 import com.securityauditor.scan.dto.CreateScanRequest;
@@ -18,13 +19,16 @@ public class ScanService {
 
     private final ScanRepository scanRepository;
     private final GitRepositoryRepository gitRepositoryRepository;
+    private final GitHubApiService gitHubApiService;
 
     public ScanService(
             ScanRepository scanRepository,
-            GitRepositoryRepository gitRepositoryRepository) {
+            GitRepositoryRepository gitRepositoryRepository,
+            GitHubApiService gitHubApiService) {
 
         this.scanRepository = scanRepository;
         this.gitRepositoryRepository = gitRepositoryRepository;
+        this.gitHubApiService = gitHubApiService;
     }
 
     public ScanResponse createScan(
@@ -46,6 +50,23 @@ public class ScanService {
         );
 
         Scan savedScan = scanRepository.save(scan);
+
+        try {
+            gitHubApiService.triggerSemgrepWorkflow(
+                    repository.getOwner(),
+                    repository.getName(),
+                    savedScan.getId()
+            );
+
+            savedScan.setStatus(ScanStatus.RUNNING);
+            savedScan.setStartedAt(LocalDateTime.now());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            savedScan.setStatus(ScanStatus.FAILED);
+        }
+
+        savedScan = scanRepository.save(savedScan);
 
         return new ScanResponse(
                 savedScan.getId(),
