@@ -1,6 +1,8 @@
 
 package com.securityauditor.github;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -10,6 +12,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.springframework.stereotype.Service;
 
@@ -20,7 +24,9 @@ import tools.jackson.databind.ObjectMapper;
 public class GitHubApiService {
 
     private final GitHubAppTokenService tokenService;
-    private final HttpClient client = HttpClient.newHttpClient();
+    private final HttpClient client = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
     private final ObjectMapper mapper = new ObjectMapper();
 
     public GitHubApiService(GitHubAppTokenService tokenService) {
@@ -182,6 +188,116 @@ public class GitHubApiService {
 
         return githubGet(url, token);
     }
+    public String extractSemgrepReport(byte[] zipBytes)
+            throws IOException {
+
+        if (zipBytes == null || zipBytes.length == 0) {
+            throw new IllegalArgumentException(
+                    "Artifact ZIP cannot be empty");
+        }
+
+        try (ZipInputStream zip = new ZipInputStream(
+                new ByteArrayInputStream(zipBytes))) {
+
+            ZipEntry entry;
+
+            while ((entry = zip.getNextEntry()) != null) {
+
+                if ("semgrep-results.json".equals(entry.getName())
+                        || entry.getName().endsWith(
+                                "/semgrep-results.json")) {
+
+                    ByteArrayOutputStream output =
+                            new ByteArrayOutputStream();
+
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    int totalBytes = 0;
+                    int maxSize = 5 * 1024 * 1024;
+
+                    while ((bytesRead = zip.read(buffer)) != -1) {
+                        totalBytes += bytesRead;
+
+                        if (totalBytes > maxSize) {
+                            throw new IOException(
+                                    "Semgrep report exceeds 5 MB");
+                        }
+
+                        output.write(buffer, 0, bytesRead);
+                    }
+
+                    return output.toString(
+                            StandardCharsets.UTF_8);
+                }
+
+                zip.closeEntry();
+            }
+        }
+
+        throw new IOException(
+                "semgrep-results.json was not found in the artifact");
+    }
+
+public String downloadSemgrepReport(
+        String owner,
+        String repo,
+        long runId)
+        throws IOException, InterruptedException {
+
+    String token = tokenService.createInstallationToken();
+
+    String artifactsUrl = "https://api.github.com/repos/"
+            + owner + "/" + repo
+            + "/actions/runs/" + runId + "/artifacts";
+
+    JsonNode artifactsJson = githubGet(artifactsUrl, token);
+    JsonNode artifacts = artifactsJson.path("artifacts");
+
+    String downloadUrl = null;
+
+    for (JsonNode artifact : artifacts) {
+        if ("semgrep-results".equals(
+                artifact.path("name").asText())) {
+
+            if (artifact.path("expired").asBoolean()) {
+                throw new IllegalStateException(
+                        "Semgrep artifact has expired");
+            }
+
+            downloadUrl = artifact.path("archive_download_url")
+                    .asText();
+
+            break;
+        }
+    }
+
+    if (downloadUrl == null || downloadUrl.isBlank()) {
+        throw new IllegalStateException(
+                "semgrep-results artifact not found for run "
+                        + runId);
+    }
+
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(downloadUrl))
+            .header("Accept", "application/vnd.github+json")
+            .header("Authorization", "Bearer " + token)
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .GET()
+            .build();
+
+    HttpResponse<byte[]> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofByteArray());
+
+    if (response.statusCode() != 200) {
+        throw new IllegalStateException(
+                "Artifact download failed with HTTP "
+                        + response.statusCode());
+    }
+
+    return extractSemgrepReport(response.body());
+}
+
 
     public JsonNode triggerSemgrepWorkflow(
             String owner,

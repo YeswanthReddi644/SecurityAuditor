@@ -4,6 +4,7 @@ package com.securityauditor.github;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.securityauditor.finding.Finding;
+import com.securityauditor.finding.FindingService;
+
 import tools.jackson.databind.JsonNode;
 
 @RestController
@@ -21,13 +25,28 @@ public class GitHubTestController {
 
     private final GitHubApiService gitHubApiService;
     private final GitHubSourceDownloadService sourceDownloadService;
+    private final FindingService findingService;
 
     public GitHubTestController(
             GitHubApiService gitHubApiService,
-            GitHubSourceDownloadService sourceDownloadService) {
+            GitHubSourceDownloadService sourceDownloadService,
+            FindingService findingService) {
 
         this.gitHubApiService = gitHubApiService;
         this.sourceDownloadService = sourceDownloadService;
+        this.findingService = findingService;
+    }
+
+    @GetMapping("/test-semgrep-report")
+    public ResponseEntity<String> testSemgrepReport()
+            throws IOException, InterruptedException {
+
+        String report = gitHubApiService.downloadSemgrepReport(
+                "YeswanthReddi644",
+                "DSA-PRACTICE",
+                38141622667L);
+
+        return ResponseEntity.ok(report);
     }
 
     @GetMapping("/test-repo")
@@ -94,7 +113,6 @@ public class GitHubTestController {
                         + "Directory: " + destination.toAbsolutePath());
     }
 
-    // Diagnostic endpoint: does not trigger a workflow.
     @GetMapping("/test-actions-permission")
     public ResponseEntity<JsonNode> testActionsPermission()
             throws IOException, InterruptedException {
@@ -106,4 +124,39 @@ public class GitHubTestController {
 
         return ResponseEntity.ok(permissions);
     }
+
+@GetMapping("/test-save-findings")
+public ResponseEntity<String> testSaveFindings(
+        @RequestParam Long scanId)
+        throws IOException, InterruptedException {
+
+    try {
+        // 1. Download the Semgrep JSON report
+    	System.out.println(">>> testSaveFindings endpoint reached");
+        String report = gitHubApiService.downloadSemgrepReport(
+                "YeswanthReddi644",
+                "DSA-PRACTICE",
+                38141622667L);
+
+        // 2. Parse the report and save findings to PostgreSQL
+        List<Finding> findings =
+                findingService.saveSemgrepResults(scanId, report);
+
+        // 3. Return the result
+        return ResponseEntity.ok(
+                "Semgrep report processed successfully.\n"
+                        + "Scan ID: " + scanId + "\n"
+                        + "Findings saved: " + findings.size());
+
+    } catch (IllegalArgumentException e) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                e.getMessage());
+    } catch (Exception e) {
+        throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to save Semgrep findings");
+    }
+}
+
 }
