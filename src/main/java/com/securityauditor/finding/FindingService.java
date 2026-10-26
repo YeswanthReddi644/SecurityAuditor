@@ -1,14 +1,14 @@
 package com.securityauditor.finding;
 
-
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.securityauditor.finding.dto.FindingResponse;
 import com.securityauditor.scan.entity.Scan;
 import com.securityauditor.scan.repository.ScanRepository;
 
@@ -91,5 +91,27 @@ public class FindingService {
         }
 
         return findingRepository.saveAll(findings);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<FindingResponse> getFindingsByScanId(Long scanId) {
+
+        List<Finding> findings = findingRepository.findByScanId(scanId);
+
+        return findings.stream()
+                .map(finding -> new FindingResponse(
+                        finding.getId(),
+                        finding.getScan().getId(),
+                        finding.getRuleId(),
+                        finding.getMessage(),
+                        finding.getFilePath(),
+                        finding.getStartLine(),
+                        finding.getEndLine(),
+                        finding.getSeverity(),
+                        finding.getCategory(),
+                        finding.getCwe(),
+                        finding.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
     }
 }

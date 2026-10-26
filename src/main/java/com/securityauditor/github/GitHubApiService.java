@@ -352,4 +352,53 @@ public String downloadSemgrepReport(
 
         return result;
     }
+    
+
+public long findSemgrepWorkflowRun(
+        String owner,
+        String repo,
+        long scanId)
+        throws IOException, InterruptedException {
+
+    String token = tokenService.createInstallationToken();
+
+    String url = "https://api.github.com/repos/"
+            + owner + "/" + repo
+            + "/actions/workflows/semgrep.yml/runs"
+            + "?event=workflow_dispatch&per_page=100";
+
+    JsonNode response = githubGet(url, token);
+    JsonNode runs = response.path("workflow_runs");
+
+    String expectedName = "Security Auditor Scan ID " + scanId;
+
+    for (JsonNode run : runs) {
+        String displayTitle = run.path("display_title").asText();
+
+        if (expectedName.equals(displayTitle)) {
+            String status = run.path("status").asText();
+
+            if (!"completed".equals(status)) {
+                throw new IllegalStateException(
+                        "Semgrep workflow is still running for scan "
+                                + scanId);
+            }
+
+            String conclusion = run.path("conclusion").asText();
+
+            if (!"success".equals(conclusion)) {
+                throw new IllegalStateException(
+                        "Semgrep workflow did not succeed for scan "
+                                + scanId + ". Conclusion: " + conclusion);
+            }
+
+            return run.path("id").asLong();
+        }
+    }
+
+    throw new IllegalStateException(
+            "No completed Semgrep workflow found for scan "
+                    + scanId);
+}
+
 }

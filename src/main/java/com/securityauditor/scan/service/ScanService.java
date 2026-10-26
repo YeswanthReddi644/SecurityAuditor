@@ -1,10 +1,12 @@
 
 package com.securityauditor.scan.service;
-
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.securityauditor.finding.Finding;
+import com.securityauditor.finding.FindingService;
 import com.securityauditor.github.GitHubApiService;
 import com.securityauditor.repository.entity.GitRepository;
 import com.securityauditor.repository.repository.GitRepositoryRepository;
@@ -16,6 +18,7 @@ import com.securityauditor.scan.repository.ScanRepository;
 
 @Service
 public class ScanService {
+	private final FindingService findingService;
 
     private final ScanRepository scanRepository;
     private final GitRepositoryRepository gitRepositoryRepository;
@@ -24,11 +27,13 @@ public class ScanService {
     public ScanService(
             ScanRepository scanRepository,
             GitRepositoryRepository gitRepositoryRepository,
-            GitHubApiService gitHubApiService) {
+            GitHubApiService gitHubApiService,
+            FindingService findingService) {
 
         this.scanRepository = scanRepository;
         this.gitRepositoryRepository = gitRepositoryRepository;
         this.gitHubApiService = gitHubApiService;
+        this.findingService = findingService;
     }
 
     public ScanResponse createScan(
@@ -78,4 +83,43 @@ public class ScanService {
                 savedScan.getRepository().getName()
         );
     }
+    
+
+
+public int processCompletedScan(Long scanId)
+        throws Exception {
+
+    Scan scan = scanRepository.findById(scanId)
+            .orElseThrow(() ->
+                    new RuntimeException(
+                            "Scan not found: " + scanId));
+
+    // Prevent processing a completed scan again.
+    if (scan.getStatus() == ScanStatus.COMPLETED) {
+        throw new IllegalStateException(
+                "Scan " + scanId + " is already completed.");
+    }
+
+    GitRepository repository = scan.getRepository();
+
+    long runId = gitHubApiService.findSemgrepWorkflowRun(
+            repository.getOwner(),
+            repository.getName(),
+            scanId);
+
+    String report = gitHubApiService.downloadSemgrepReport(
+            repository.getOwner(),
+            repository.getName(),
+            runId);
+
+    List<Finding> findings =
+            findingService.saveSemgrepResults(scanId, report);
+
+    scan.setStatus(ScanStatus.COMPLETED);
+    scan.setCompletedAt(LocalDateTime.now());
+    scanRepository.save(scan);
+
+    return findings.size();
+}
+
 }
