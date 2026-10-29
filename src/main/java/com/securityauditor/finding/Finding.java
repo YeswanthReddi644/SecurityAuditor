@@ -43,6 +43,8 @@ public class Finding {
     @Column(length = 100)
     private String category;
 
+    @Column(columnDefinition = "TEXT")
+    private String aiExplanation;
 
 @Column(length = 1000)
 private String cwe;
@@ -53,6 +55,7 @@ private String cwe;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "scan_id", nullable = false)
     private Scan scan;
+    
 
     public Finding() {
     }
@@ -123,6 +126,12 @@ private String cwe;
 
     public Scan getScan() {
         return scan;
+    }
+    public String getAiExplanation() {
+        return aiExplanation;
+    }
+    public void setAiExplanation(String aiExplanation) {
+        this.aiExplanation = aiExplanation;
     }
 }
 
