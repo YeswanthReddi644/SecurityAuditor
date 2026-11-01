@@ -1,0 +1,36 @@
+
+name: Semgrep Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_id:
+        description: "Scan ID from SecureScan AI"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  semgrep:
+    name: Run Semgrep Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: python -m pip install semgrep
+
+      - name: Run Semgrep
+        run: semgrep scan --config auto --json --output semgrep-results.json || true
+
+      - name: Upload Semgrep Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+          if-no-files-found: error
