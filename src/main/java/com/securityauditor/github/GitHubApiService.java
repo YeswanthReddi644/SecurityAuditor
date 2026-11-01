@@ -299,59 +299,61 @@ public String downloadSemgrepReport(
 }
 
 
-    public JsonNode triggerSemgrepWorkflow(
-            String owner,
-            String repo,
-            long scanId)
-            throws IOException, InterruptedException {
 
-        if (owner == null || owner.isBlank()
-                || repo == null || repo.isBlank()
-                || scanId <= 0) {
-            throw new IllegalArgumentException(
-                    "Owner, repository, and a valid scan ID are required");
-        }
+public JsonNode triggerSemgrepWorkflow(
+        String owner,
+        String repo,
+        long scanId)
+        throws IOException, InterruptedException {
 
-        String token = tokenService.createInstallationToken();
-
-        String url = "https://api.github.com/repos/"
-                + owner + "/" + repo
-                + "/actions/workflows/semgrep.yml/dispatches";
-
-        var inputs = Map.of(
-                "scan_id", String.valueOf(scanId));
-
-        var body = Map.of(
-                "ref", "main",
-                "inputs", inputs);
-
-        String requestBody = mapper.writeValueAsString(body);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Accept", "application/vnd.github+json")
-                .header("Authorization", "Bearer " + token)
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
-        HttpResponse<String> response = client.send(
-                request,
-                HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 204) {
-            throw new IllegalStateException(
-                    "GitHub workflow dispatch failed with HTTP "
-                    + response.statusCode() + ": " + response.body());
-        }
-
-        var result = mapper.createObjectNode();
-        result.put("status", "dispatched");
-        result.put("scan_id", scanId);
-
-        return result;
+    if (owner == null || owner.isBlank()
+            || repo == null || repo.isBlank()
+            || scanId <= 0) {
+        throw new IllegalArgumentException(
+                "Owner, repository, and a valid scan ID are required");
     }
+
+    String token = tokenService.createInstallationToken();
+
+    String url = "https://api.github.com/repos/"
+            + owner + "/" + repo
+            + "/actions/workflows/semgrep.yml/dispatches";
+
+    var inputs = Map.of(
+            "scan_id", String.valueOf(scanId));
+
+    var body = Map.of(
+            "ref", "master",
+            "inputs", inputs);
+
+    String requestBody = mapper.writeValueAsString(body);
+
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Accept", "application/vnd.github+json")
+            .header("Authorization", "Bearer " + token)
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+
+    HttpResponse<String> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 204) {
+        throw new IllegalStateException(
+                "GitHub workflow dispatch failed with HTTP "
+                        + response.statusCode() + ": " + response.body());
+    }
+
+    var result = mapper.createObjectNode();
+    result.put("status", "dispatched");
+    result.put("scan_id", scanId);
+
+    return result;
+}
+
     
 
 public long findSemgrepWorkflowRun(
