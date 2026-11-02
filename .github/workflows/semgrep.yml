@@ -1,6 +1,8 @@
 
 name: Semgrep Security Scan
 
+run-name: Security Auditor Scan ID ${{ inputs.scan_id }}
+
 on:
   workflow_dispatch:
     inputs:
